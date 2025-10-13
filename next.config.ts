@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' https://cdn.platform.openai.com https://js.intercomcdn.com blob:",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.platform.openai.com https://js.intercomcdn.com blob:",
               "style-src 'self' 'unsafe-inline' https://cdn.platform.openai.com",
               "img-src 'self' blob: data: https://cdn.platform.openai.com",
               "font-src 'self' https://cdn.platform.openai.com",

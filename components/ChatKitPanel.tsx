@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, ComponentType } from "react";
+import { useChatKit } from "@openai/chatkit-react";
 import {
   STARTER_PROMPTS,
   PLACEHOLDER_INPUT,
@@ -77,31 +78,20 @@ export function ChatKitPanel({
     "pending" | "ready" | "error"
   >(() =>
     isBrowser && window.customElements?.get("openai-chatkit")
-      ? "ready"
-      : "pending"
-  );
-  const [widgetInstanceKey, setWidgetInstanceKey] = useState(0);
-  const [chatKitHook, setChatKitHook] = useState<{
-    useChatKit: (options: UseChatKitOptions) => UseChatKitReturn;
-  } | null>(null);
-
-  const setErrorState = useCallback((updates: Partial<ErrorState>) => {
-    setErrors((current) => ({ ...current, ...updates }));
-  }, []);
-
-  // Load useChatKit dynamically
-  useEffect(() => {
-    if (isBrowser) {
-      import("@openai/chatkit-react").then(({ useChatKit }) => {
-        setChatKitHook({ useChatKit });
-      });
-    }
-
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
+          ? "ready"
+          : "pending"
+        );
+        const [widgetInstanceKey, setWidgetInstanceKey] = useState(0);
+      
+        const setErrorState = useCallback((updates: Partial<ErrorState>) => {
+          setErrors((current) => ({ ...current, ...updates }));
+        }, []);
+      
+        useEffect(() => {
+          return () => {
+            isMountedRef.current = false;
+          };
+        }, []);
   useEffect(() => {
     if (!isBrowser) {
       return;
@@ -299,7 +289,7 @@ export function ChatKitPanel({
   );
 
   // Use chatKit hook if loaded, otherwise return null
-  const chatkit = chatKitHook?.useChatKit({
+  const chatkit = useChatKit({
     api: { getClientSecret },
     theme: {
       colorScheme: theme,

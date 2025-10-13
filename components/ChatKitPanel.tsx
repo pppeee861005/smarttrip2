@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ChatKit, useChatKit } from "@openai/chatkit-react";
+import { useCallback, useEffect, useRef, useState, ComponentType } from "react";
 import {
   STARTER_PROMPTS,
   PLACEHOLDER_INPUT,
@@ -12,6 +11,27 @@ import {
 } from "@/lib/config";
 import { ErrorOverlay } from "./ErrorOverlay";
 import type { ColorScheme } from "@/hooks/useColorScheme";
+import type { UseChatKitReturn, UseChatKitOptions } from "@openai/chatkit-react";
+
+// Create a client-side only component for ChatKit
+function ChatKitWrapper({ control, className }: { control: UseChatKitReturn["control"]; className: string }) {
+  const [ChatKitComponent, setChatKitComponent] = useState<ComponentType<{ control: UseChatKitReturn["control"]; className: string }> | null>(null);
+
+  useEffect(() => {
+    // Only load on client side
+    if (isBrowser) {
+      import("@openai/chatkit-react").then(({ ChatKit }) => {
+        setChatKitComponent(() => ChatKit);
+      });
+    }
+  }, []);
+
+  if (!ChatKitComponent) {
+    return <div>Loading chat interface...</div>;
+  }
+
+  return <ChatKitComponent control={control} className={className} />;
+}
 
 export type FactAction = {
   type: "save";
@@ -61,12 +81,22 @@ export function ChatKitPanel({
       : "pending"
   );
   const [widgetInstanceKey, setWidgetInstanceKey] = useState(0);
+  const [chatKitHook, setChatKitHook] = useState<{
+    useChatKit: (options: UseChatKitOptions) => UseChatKitReturn;
+  } | null>(null);
 
   const setErrorState = useCallback((updates: Partial<ErrorState>) => {
     setErrors((current) => ({ ...current, ...updates }));
   }, []);
 
+  // Load useChatKit dynamically
   useEffect(() => {
+    if (isBrowser) {
+      import("@openai/chatkit-react").then(({ useChatKit }) => {
+        setChatKitHook({ useChatKit });
+      });
+    }
+
     return () => {
       isMountedRef.current = false;
     };
@@ -268,7 +298,8 @@ export function ChatKitPanel({
     [isWorkflowConfigured, setErrorState]
   );
 
-  const chatkit = useChatKit({
+  // Use chatKit hook if loaded, otherwise return null
+  const chatkit = chatKitHook?.useChatKit({
     api: { getClientSecret },
     theme: {
       colorScheme: theme,
@@ -346,7 +377,7 @@ export function ChatKitPanel({
         });
       }
     },
-  });
+  }) || null;
 
   const activeError = errors.session ?? errors.integration;
   const blockingError = errors.script ?? activeError;
@@ -354,7 +385,7 @@ export function ChatKitPanel({
   if (isDev) {
     console.debug("[ChatKitPanel] render state", {
       isInitializingSession,
-      hasControl: Boolean(chatkit.control),
+      hasControl: Boolean(chatkit?.control),
       scriptStatus,
       hasError: Boolean(blockingError),
       workflowId: WORKFLOW_ID,
@@ -363,15 +394,20 @@ export function ChatKitPanel({
 
   return (
     <div className="relative pb-8 flex h-[90vh] w-full rounded-2xl flex-col overflow-hidden bg-white shadow-sm transition-colors dark:bg-slate-900">
-      <ChatKit
-        key={widgetInstanceKey}
-        control={chatkit.control}
-        className={
-          blockingError || isInitializingSession
-            ? "pointer-events-none opacity-0"
-            : "block h-full w-full"
-        }
-      />
+      {chatkit ? (
+        <ChatKitWrapper
+          control={chatkit.control}
+          className={
+            blockingError || isInitializingSession
+              ? "pointer-events-none opacity-0"
+              : "block h-full w-full"
+          }
+        />
+      ) : (
+        <div className="flex items-center justify-center h-full">
+          Loading chat interface...
+        </div>
+      )}
       <ErrorOverlay
         error={blockingError}
         fallbackMessage={

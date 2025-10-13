@@ -18,9 +18,17 @@ export default function RootLayout({
         <Script
           src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"
           strategy="beforeInteractive"
+          onLoad={() => {
+            console.log("ChatKit script loaded successfully");
+          }}
+          onError={(e) => {
+            console.error("Failed to load ChatKit script", e);
+          }}
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+      </body>
     </html>
   );
 }

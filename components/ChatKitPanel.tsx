@@ -87,16 +87,23 @@ export function ChatKitPanel({
       setErrorState({ script: null });
     };
 
-    const handleError = (event: Event) => {
-      console.error("Failed to load chatkit.js for some reason", event);
-      if (!isMountedRef.current) {
-        return;
-      }
-      setScriptStatus("error");
-      const detail = (event as CustomEvent<unknown>)?.detail ?? "unknown error";
-      setErrorState({ script: `Error: ${detail}`, retryable: false });
-      setIsInitializingSession(false);
-    };
+  const handleError = (event: Event) => {
+    console.error("Failed to load chatkit.js for some reason", event);
+    if (!isMountedRef.current) {
+      return;
+    }
+    setScriptStatus("error");
+    const detail = (event as CustomEvent<unknown>)?.detail ?? "unknown error";
+    const errorMsg = `Script load failed: ${detail}. This may be due to network issues or security policies.`;
+
+    // In production, show more user-friendly error message
+    const userDisplayError = process.env.NODE_ENV === "production"
+      ? "Unable to load chat interface. Please refresh the page."
+      : errorMsg;
+
+    setErrorState({ script: userDisplayError, retryable: true });
+    setIsInitializingSession(false);
+  };
 
     window.addEventListener("chatkit-script-loaded", handleLoaded);
     window.addEventListener(
@@ -327,6 +334,17 @@ export function ChatKitPanel({
       // Note that Chatkit UI handles errors for your users.
       // Thus, your app code doesn't need to display errors on UI.
       console.error("ChatKit error", error);
+
+      // In production, log detailed error information for debugging
+      if (process.env.NODE_ENV === "production") {
+        console.error("Production ChatKit error details:", {
+          error,
+          timestamp: new Date().toISOString(),
+          userAgent: isBrowser ? navigator.userAgent : "server",
+          workflowId: WORKFLOW_ID,
+          scriptStatus,
+        });
+      }
     },
   });
 
